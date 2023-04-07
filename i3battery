@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Displays batter percentage with colors. Compatible with i3blocks
+
 NUM=`cat /sys/class/power_supply/BAT1/capacity` || exit
 BAT_STATUS=`cat /sys/class/power_supply/BAT1/status|sed 's/.//2g'`
 [[ $BAT_STATUS == C ]] && STATUS=🔌 || STATUS=🔋

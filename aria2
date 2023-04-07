@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Downlaods torrents using .torrent files or magnet links.
+# torrent files and magnet links can be provided as arguments.
+# torrent files can also be placed in :aw:w$HOME/Downloads directory
+
 downloadDir="$HOME/torrents"
 options="-d $downloadDir --seed-time=0 --bt-max-peers=0 --bt-detach-seed-only --max-overall-upload-limit=20K  --max-upload-limit=5K"
 

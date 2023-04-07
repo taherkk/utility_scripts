@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Un-mount a disk
+
 blks=$(lsblk -o "name,label,fstype,type,size,mountpoint")
 
 mounted=$( mount | grep /home/taher/mnt | awk '{ print $1 }' | sed -e 's/\/dev\///' )

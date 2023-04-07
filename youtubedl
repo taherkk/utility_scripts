@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Initial Setup {{{
+# Installs videos & playlists from youtube and other
+# sources supported by youtube-dl project
+
+# Initial Setup
 basedir=$HOME/youtube-dl/
 outdir=$basedir
 url=""
@@ -8,9 +11,8 @@ format=""
 options=""
 videoFormat="\'best/best\'"
 audioFormat="\'bestaudio[ext=m4a]/bestaudio\'"
-#}}}
 
-# Arguments {{{
+# Arguments
 while getopts ":avd:u:f:o:" arg; do
   case $arg in
     d) outdir=$basedir$OPTARG;;
@@ -19,7 +21,6 @@ while getopts ":avd:u:f:o:" arg; do
     o) options=$OPTARG;;
   esac
 done
-#}}}
 
 download(){
   youtube-dl -f $1 $url $options -c -o "$outdir/%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
@@ -29,7 +30,7 @@ downloadPlaylist(){
   youtube-dl -f $1 $url $options --yes-playlist --write-sub --sub-lang en -i -c -o "$outdir/%(playlist_index)0$( echo $2 )d-%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
 }
 
-# Checks {{{
+# Checks
 
 # Checking for the default directory
 [[ -d $outdir ]] && : || mkdir -p $outdir
@@ -40,9 +41,8 @@ if [[ -z $url ]] && [[ $url =~ ^http* ]];then
   exit 1
 fi
 
-#}}}
 
-# Single file {{{
+# Single file
 if [[ $format == vi ]];then
   echo Downloading your video file
   download $videoFormat
@@ -50,13 +50,12 @@ if [[ $format == vi ]];then
 elif [[ $format == au ]];then
   echo Downloading your audio file
   download $audioFormat
-#}}}
 
-# Playlist {{{
+# Playlist
 
 elif [[ $format =~ ^pl* ]];then
 
-  # Getting playlist name {{{
+  # Getting playlist name
 	flat_playlist=$( youtube-dl --flat-playlist $url )
   playlist_name=$( echo "$flat_playlist" | grep "\[download\] Downloading playlist" | sed -r 's/\[download\] Downloading playlist: (.*)/\1/' | tr " " "_" )
 	echo Downloading playlist: $playlist_name
@@ -78,13 +77,11 @@ elif [[ $format =~ ^pl* ]];then
   else
     echo 'Please mention audio or video in the first augument: pl-[au|vi]'
   fi
-  #}}}
   
-  # Custom choice {{{
+  # Custom choice
 else
   echo hello
   youtube-dl -F $url
   read -p "Enter your choice: " choice
   youtube-dl -f $choice $url -c -o "$outdir/%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
 fi
-#}}}

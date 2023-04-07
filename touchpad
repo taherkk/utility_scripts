@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Disable, enable or toggle touchpad while using mouse
+
 tapchange(){
   xinput set-prop $device $prop $1
 }

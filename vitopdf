@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Script to convert video to pdf using a file with timestamps
+# to extract frames from
+
 curdir=$( pwd )
 
 help(){

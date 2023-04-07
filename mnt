@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Mounts drives on folders with name equal to the label
+# and if label is not found user is prompted to specify
+# the folder name
+
 set -e
 drives=$(lsblk -po "name,LABEL,FSTYPE,type,size,mountpoint")
 mountPath="/home/`whoami`/mnt/"
