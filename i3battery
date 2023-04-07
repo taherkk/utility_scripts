@@ -1,0 +1,24 @@
+#!/bin/bash
+
+NUM=`cat /sys/class/power_supply/BAT1/capacity` || exit
+BAT_STATUS=`cat /sys/class/power_supply/BAT1/status|sed 's/.//2g'`
+[[ $BAT_STATUS == C ]] && STATUS=🔌 || STATUS=🔋
+
+if [[ $NUM -ge 100 ]];then
+  echo $STATUS "100"%
+else
+  echo $STATUS "$NUM"%
+fi
+  
+if [ "$NUM" -ge 80 ]; then
+  echo "#00ff00"
+elif [ "$NUM" -ge 60 ]; then
+	echo "#c5ff00"
+elif [ "$NUM" -ge 40 ]; then
+	echo "#eeff00"
+elif [ "$NUM" -ge 20 ]; then
+	echo "#FFa000"
+else
+  [[ ${BAT_STATUS} != C ]] && notify-send "🔋 Batter Low (${NUM}%)" -u critical
+	echo "#ffc000"
+fi

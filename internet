@@ -1,0 +1,164 @@
+#!/bin/bash
+
+get_interface(){
+  interface=$( ip route | awk '/^default/ {print $5}' )
+}
+
+get_active(){
+  active=`nmcli -f name con show --active | sed '1d;s/\s*$//;q'`
+  [[ -z "$active" ]] && active=None
+}
+
+get_wifi_list(){
+  list=$(nmcli -f IN-USE,ssid,mode,chan,rate,signal device wifi list)
+  printf "SrNo\t$(echo "$list" | sed '1p;d')\n"
+  wifi_list_show=$(echo "$list" | sed '1d' | awk '{print ++i")" "\t" $0}')
+  echo "$wifi_list_show"
+}
+
+get_wifi_name(){
+  local __wifi_name=$1
+
+  read -p "Enter SrNO, r to refresh or q to quit: " srno
+  if [[ $srno == q ]];then
+    eval $__wifi_name="'q'"
+    return 0
+  elif [[ $srno == r ]];then
+    eval $__wifi_name="'r'"
+    return 0
+  elif [[ $srno == "" ]];then
+    return 1
+  fi
+  [[ -z $srno || ! $srno =~ [0-9]+ ]] && (echo $srno;echo "Sr no. is invalid") || :
+
+  local wifi_ssid=$(nmcli -t -f ssid dev wifi list)
+  local __name=$(echo -e "$wifi_ssid" | sed -e "${srno}p;d")
+  if [[ -z "$__name" ]];then
+    echo SrNo. $srno is invalid
+  else
+    eval $__wifi_name="'$__name'"
+  fi
+}
+
+get_con_name(){
+  con=$(nmcli -f name con show | grep "$1" | sed 's/\s*$//;q')
+  [[ ! -z $con ]] && eval "$2=\"$con\"" || return 1
+}
+
+connect_wifi(){
+  # To check if the wifi is connected to the desired network or no network at all
+  while [[ "$active" != "$wifi_name" || "$active" == None ]]; do
+    # To scan for new networks in case of a rescan
+    nmcli device wifi rescan 2> /dev/null
+    # Time required for a rescan to complete or waiting in case of high cpu usage
+    sleep 5
+    # List available wifi networks
+    get_wifi_list
+    # Get SSID
+    get_wifi_name wifi_name
+
+    [[ $wifi_name == q ]] && exit
+    [[ $wifi_name == r || $wifi_name == "" ]] && continue
+    echo Selected network: "$wifi_name"
+
+    get_active
+    if [[ $active == $wifi_name ]];then
+      echo Currently connected to "$wifi_name"
+      return
+    fi
+
+    # To check if a connection is already configured or not
+    get_con_name "$wifi_name" con_name
+    if  [[ $con_name > 0 ]];then
+      echo Connecting to connection: "$con_name"
+      # If the wifi is connected to any network by default it needs to close that connection
+      get_active
+      [[ "$active" == None ]] && : ||  $(nmcli connection down "$active" > /dev/null)
+      # If the network is previously configured then activate the connection.
+      nmcli --ask connection up "$con_name" > /dev/null
+    else
+      echo "Connection does not exist. Creating connection."
+      nmcli --ask dev wifi connect "$wifi_name"
+    fi
+
+    get_active
+    if [[ "$active" == "$wifi_name" ]];then
+      local success_string="Successfully connected to $wifi_name"
+      echo $success_string
+      #notify-send "$(echo $success_string)"
+      notify-send "$success_string"
+    else
+      nmcli con del "$con_name" > /dev/null
+    fi
+    echo
+  done
+}
+
+connect_lan(){
+  nmcli dev disconnect $wifi_in
+  nmcli dev con $lan_in
+  get_interface
+  [[ $interface == $lan_in ]] && notify-send "Successfull connected to Ethernet" || :
+}
+
+lan_refresh(){
+  sudo ip link set $1 down
+  sleep 2
+  sudo ip link set $1 up
+}
+
+wifi_refresh(){
+  get_active
+  nmcli radio wifi off
+  sleep 2
+  nmcli radio wifi on
+} #}}}
+
+# Setting Variables
+get_active
+# getting the interface (wifi/lan) which is active at the moment
+interface=$( ip route | awk '/^default/ {print $5}' )
+lan_in="enp3s0"
+wifi_in="wlp1s0"
+#}}}
+
+# Main
+if [[ $1 == "" ]];then
+  echo "$active"
+  exit 0
+fi
+
+while getopts ":wlrd:" arg > /dev/null;do
+  case $arg in
+    w) wifi=1;;
+    l) lan=1;;
+    r) refresh=1;;
+    d) delete=$OPTARG;;
+  esac
+done
+
+if [[ $refresh == 1 ]];then
+  if [[ $interface == $lan_in ]];then
+    lan_refresh $interface
+  elif [[ $interface == $wifi_in ]];then
+    wifi_refresh
+  fi
+
+elif [[ $wifi == 1 ]];then
+  nmcli radio wifi on
+  # Sometimes the wifi gets connected to a network which is preconfigured, automatically
+  get_active
+  if [[ "$active" == None || "$interface" != "$wifi_in" ]];then
+    connect_wifi
+  else
+    read -p "Wifi connected to $active. Change?[y/n] " choice
+    [[ $choice == y ]] && connect_wifi || :
+  fi
+
+elif [[ $lan == 1 ]];then
+  # If the interface is enp3s0 then do nothing
+  # If the no wifi active then do nothing
+  # Or else disconnect with that wifi
+  [[ $interface == $lan_in ]] && exit 1 || :
+  connect_lan
+fi

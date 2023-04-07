@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Initial Setup {{{
+basedir=$HOME/youtube-dl/
+outdir=$basedir
+url=""
+format=""
+options=""
+videoFormat="\'best/best\'"
+audioFormat="\'bestaudio[ext=m4a]/bestaudio\'"
+#}}}
+
+# Arguments {{{
+while getopts ":avd:u:f:o:" arg; do
+  case $arg in
+    d) outdir=$basedir$OPTARG;;
+    f) format=$OPTARG;;
+    u) url=$OPTARG;;
+    o) options=$OPTARG;;
+  esac
+done
+#}}}
+
+download(){
+  youtube-dl -f $1 $url $options -c -o "$outdir/%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
+}
+
+downloadPlaylist(){
+  youtube-dl -f $1 $url $options --yes-playlist --write-sub --sub-lang en -i -c -o "$outdir/%(playlist_index)0$( echo $2 )d-%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
+}
+
+# Checks {{{
+
+# Checking for the default directory
+[[ -d $outdir ]] && : || mkdir -p $outdir
+
+# Checking url correctness
+if [[ -z $url ]] && [[ $url =~ ^http* ]];then
+  echo "Invalid URL"
+  exit 1
+fi
+
+#}}}
+
+# Single file {{{
+if [[ $format == vi ]];then
+  echo Downloading your video file
+  download $videoFormat
+
+elif [[ $format == au ]];then
+  echo Downloading your audio file
+  download $audioFormat
+#}}}
+
+# Playlist {{{
+
+elif [[ $format =~ ^pl* ]];then
+
+  # Getting playlist name {{{
+	flat_playlist=$( youtube-dl --flat-playlist $url )
+  playlist_name=$( echo "$flat_playlist" | grep "\[download\] Downloading playlist" | sed -r 's/\[download\] Downloading playlist: (.*)/\1/' | tr " " "_" )
+	echo Downloading playlist: $playlist_name
+  outdir=$outdir$playlist_name
+  [[ ! -d $outdir ]] && mkdir $outdir
+  [[ -d $outdir ]] && echo "Download directory = $outdir"
+  #}}}
+  
+  count=$(( $( echo "$flat_playlist" | wc -l) - 4 ))
+  padding=${#count}
+  
+  # Choosing audio or video {{{
+  if [[ $format == pl-au ]];then
+    echo Downloading playlist as audio files
+    downloadPlaylist $audioFormat $padding
+  elif [[ $format == pl-vi ]];then
+    echo Downloading playlist as video files
+    downloadPlaylist $videoFormat $padding
+  else
+    echo 'Please mention audio or video in the first augument: pl-[au|vi]'
+  fi
+  #}}}
+  
+  # Custom choice {{{
+else
+  echo hello
+  youtube-dl -F $url
+  read -p "Enter your choice: " choice
+  youtube-dl -f $choice $url -c -o "$outdir/%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args '-c -j 3 -x 16 -s 20 -k 1M'
+fi
+#}}}
