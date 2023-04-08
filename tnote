@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Script to create, delete, rename and open notes
+
+notesdir=$HOME/Dropbox/NOTES/
+confirmation="I am sure I want to delete this note"
+
+[[ -d $notesdir ]] && : || mkdir -p $notesdir
+
+getNote(){
+	echo "$(echo -e "$(ls $notesdir)" | dmenu -l 10 -p "Select Note: ")"
+}
+
+while getopts ":c:dor:" arg > /dev/null; do
+	case $arg in
+		c)option=c;filename=$OPTARG;;
+		d)option=d;;
+		r)option=r;filename=$OPTARG;;
+		o)option=o;;
+	esac
+done
+
+if [[ $option == c || $option == create ]];then
+	touch $notesdir$filename
+	if [[ -e $notesdir$filename && -e $notesdir$filename ]];then
+		notify-send "Note $filename created" 2> /dev/null
+		$TERMINAL -e nvim $notesdir$filename &
+	fi
+elif [[ $option == d || $option == delete ]];then
+	note=$(getNote)
+	if [[ ! -z $note ]];then
+		mv $notesdir$note ~/.trash/
+		[[ ! -e $notesdir$note ]] && notify-send "Note $note deleted."
+	fi
+elif [[ $option == o ]];then
+	note=$(getNote)
+	[[ ! -z $note ]] && $TERMINAL -e nvim "$notesdir$note"
+elif [[ $option == r ]]; then
+	read -p "Enter new filename" newfilename
+	mv $notesdir$filename $notesdir$newfilename
+fi
